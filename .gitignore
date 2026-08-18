@@ -1,0 +1,12 @@
+node_modules
+.next
+out
+.env
+.env.local
+*.log
+demo/frames
+demo/audio
+demo/slides
+
+.DS_Store
+infra/lambda.zip

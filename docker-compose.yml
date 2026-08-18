@@ -1,0 +1,61 @@
+services:
+  crdb:
+    image: cockroachdb/cockroach:v25.3.0
+    command: start-single-node --insecure --advertise-addr=crdb
+    ports:
+      - "26257:26257"
+      - "8080:8080"
+    volumes:
+      - crdb:/cockroach/cockroach-data
+    healthcheck:
+      test: ["CMD", "cockroach", "sql", "--insecure", "-e", "SELECT 1"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: relic
+      MINIO_ROOT_PASSWORD: relicrelic
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio:/data
+
+  createbucket:
+    image: minio/mc:latest
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      sleep 3;
+      mc alias set local http://minio:9000 relic relicrelic;
+      mc mb -p local/relic-agent-artifacts;
+      exit 0;
+      "
+
+  app:
+    build: .
+    depends_on:
+      crdb:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgresql://root@crdb:26257/relic?sslmode=disable
+      S3_BUCKET: relic-agent-artifacts
+      S3_ENDPOINT: http://minio:9000
+      S3_FORCE_PATH_STYLE: "true"
+      AWS_ACCESS_KEY_ID: relic
+      AWS_SECRET_ACCESS_KEY: relicrelic
+      AWS_REGION: eu-west-1
+      BEDROCK_MODEL_ID: ${BEDROCK_MODEL_ID:-}
+    ports:
+      - "3000:3000"
+
+volumes:
+  crdb:
+  minio:

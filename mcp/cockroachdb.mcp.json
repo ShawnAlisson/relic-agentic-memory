@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "cockroachdb": {
+      "url": "https://cockroachlabs.cloud/mcp",
+      "headers": {
+        "Authorization": "Bearer ${COCKROACH_MCP_TOKEN}"
+      }
+    }
+  },
+  "_comment": "Paste the official snippet from https://cockroachlabs.cloud/mcp over this file. Relic also exposes the same read-only tool contract at GET /api/mcp/tools for local judging."
+}

@@ -1,0 +1,23 @@
+Parameters:
+  RelicApiUrl:
+    Type: String
+    Default: https://relic.example
+  DatabaseUrl:
+    Type: String
+    NoEcho: true
+Resources:
+  ArtifactBucket:
+    Type: AWS::S3::Bucket
+  RelicTurnFn:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: relic-agent-turn
+      Runtime: nodejs22.x
+      Handler: handler.handler
+      Timeout: 60
+      MemorySize: 512
+      Code: lambda/
+      Environment:
+        Variables:
+          RELIC_API_URL: !Ref RelicApiUrl
+          DATABASE_URL: !Ref DatabaseUrl

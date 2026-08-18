@@ -1,0 +1,7 @@
+node_modules
+.next
+.git
+demo/frames
+demo/audio
+demo/slides
+.env
