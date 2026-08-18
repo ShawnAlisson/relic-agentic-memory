@@ -3,84 +3,90 @@ import { existsSync } from "node:fs";
 import { spawn, execFile } from "node:child_process";
 import { promisify } from "node:util";
 import path from "node:path";
-
 import { loadEnv } from "./env.mjs";
-loadEnv();
 
+loadEnv();
 const execFileAsync = promisify(execFile);
 
-const NARRATION = [
-  "Relic is agentic memory that does not go down.",
-  "On-call agents spawn, write constantly, and die. Their lessons should not.",
-  "We store working memory, episodes, and embeddings in CockroachDB — one system of record.",
-  "When checkout p99 explodes in eu-west-1, Relic retrieves the last time it happened using CockroachDB distributed vector indexing.",
-  "No sidecar vector store. No consistency gap. Tenant-prefixed C-SPANN keeps customer memories isolated.",
-  "The agent checks CockroachDB Cloud with the ccloud CLI — JSON out, service-account RBAC.",
-  "Investigation packets go to Amazon S3. Turns can run on AWS Lambda. Bedrock is optional reasoning, not the memory.",
-  "Then Relic commits the lesson. The next spawn starts with history, not a blank context window.",
-  "Agents that forget are not production agents. Relic remembers.",
-];
+// Spoken, not a trailer. Contractions, short sentences, what the product is.
+const NARRATION = `Relic is memory for on-call A.I. agents.
 
-function slideHtml(title, body, kicker) {
+Not a chatbot. A database, so when an agent dies, the lesson does not.
+
+Here is why that matters. Agents already get paged into production. They investigate a checkout outage, they roll something back, they write constantly. Then the process is gone. The next agent wakes up with a blank context window. That is amnesia wearing a pager.
+
+Relic stores the incident in CockroachDB. The live episode, similar outages from last month, and the runbook, including a vector search so it can actually find: we have seen this checkout timeout before.
+
+Watch a SEV-1. Checkout latency jumps to four seconds in Europe. Relic opens a record, searches memory, and pulls the July incident plus the p99 runbook. It checks that Cockroach itself is healthy, writes the investigation to S3, and saves the lesson.
+
+So tonight's agent, or one in another region, does not repeat the same rollback. That is Relic. Durable memory for agents that have to act.`;
+
+function slideHtml(kicker, title, body, extra = "") {
   return `<!doctype html>
 <html><head><meta charset="utf-8"/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&family=Newsreader:opsz,wght@6..72,500&display=swap" rel="stylesheet">
 <style>
-  html,body{margin:0;height:100%;background:#0c0d0b;color:#ece7d8;font-family:IBM Plex Sans,Helvetica,sans-serif;}
-  .wrap{padding:72px 88px;height:100%;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;}
-  .k{font-family:IBM Plex Mono,monospace;letter-spacing:.18em;text-transform:uppercase;color:#d6ff4b;font-size:18px;}
-  h1{font-weight:500;font-size:64px;line-height:1.02;margin:18px 0;max-width:16ch;letter-spacing:-.03em;}
-  p{font-size:28px;line-height:1.4;color:#9a947f;max-width:28em;}
-  .bar{position:absolute;bottom:0;left:0;right:0;height:8px;background:#d6ff4b;}
+  html,body{margin:0;height:100%;background:#0c0d0b;color:#ece7d8;font-family:"IBM Plex Sans",Helvetica,sans-serif;}
+  .wrap{padding:80px 96px;height:100%;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;}
+  .k{font-family:"IBM Plex Mono",monospace;letter-spacing:.16em;text-transform:uppercase;color:#d6ff4b;font-size:20px;}
+  h1{font-family:"Newsreader",Georgia,serif;font-weight:500;font-size:72px;line-height:1.02;margin:20px 0 16px;max-width:18ch;letter-spacing:-.03em;}
+  p{font-size:30px;line-height:1.4;color:#9a947f;max-width:22em;margin:0;}
+  .bar{position:absolute;bottom:0;left:0;right:0;height:10px;background:#d6ff4b;}
+  .extra{margin-top:36px;display:flex;gap:28px;}
+  .card{flex:1;border-top:1px solid #2a2c24;padding-top:14px;}
+  .card b{display:block;font-size:22px;margin-bottom:6px;}
+  .card span{color:#9a947f;font-size:20px;}
 </style></head>
 <body><div class="bar"></div>
 <div class="wrap">
   <div class="k">${kicker}</div>
   <h1>${title}</h1>
   <p>${body}</p>
+  ${extra}
 </div></body></html>`;
 }
 
 const slides = [
   {
-    kicker: "CockroachDB × AWS · Agentic memory",
-    title: "Relic",
-    body: "Agents that think. Agents that act. Agents that remember — reliably, globally, at any scale.",
+    kicker: "What this is",
+    title: "Relic is memory for on-call AI agents.",
+    body: "When production pages an agent, Relic is the database it remembers with — not a chat window that vanishes when the process dies.",
   },
   {
-    kicker: "The failure mode",
-    title: "An agent whose memory goes offline does not degrade. It stops.",
-    body: "Traditional databases were built for human-scale reads. Agentic systems spawn autonomously and write constantly.",
+    kicker: "The problem",
+    title: "Today’s agents forget the outage they just fixed.",
+    body: "They investigate, they roll back, they write constantly. Then the spawn is gone. The next one starts from zero. That is amnesia on-call.",
   },
   {
-    kicker: "System of record",
-    title: "CockroachDB holds the memory. AWS holds the work.",
-    body: "Episodes, traces, VECTOR embeddings, and audit logs in CockroachDB. Artifacts on S3. Turns on Lambda.",
+    kicker: "What it does",
+    title: "Store the incident. Recall the last time. Act. Write the lesson.",
+    body: "Three moves, one system of record in CockroachDB.",
+    extra: `<div class="extra">
+      <div class="card"><b>Store</b><span>Episode row + working memory</span></div>
+      <div class="card"><b>Recall</b><span>VECTOR search over past SEVs</span></div>
+      <div class="card"><b>Act</b><span>S3 packet, then commit the lesson</span></div>
+    </div>`,
   },
   {
-    kicker: "Distributed vector indexing",
-    title: "Same commit as the incident.",
-    body: "CREATE VECTOR INDEX on memories(tenant_id, embedding). Retrieval uses embedding <-> query. No second database to drift.",
+    kicker: "Live example",
+    title: "Checkout is dying in Europe. Relic has seen this.",
+    body: "p99 hits 4.2 seconds. Memory returns the July SDK incident and the p99 runbook. The agent does not guess from a blank prompt.",
   },
   {
-    kicker: "Live SEV1",
-    title: "Checkout p99 is 4.2 seconds in eu-west-1.",
-    body: "Relic retrieves the July SDK incident, the p99 runbook, and the tenant isolation rule — then acts.",
+    kicker: "Why CockroachDB",
+    title: "The memory is the database. Not a sidecar.",
+    body: "Incidents, runbooks, and embeddings live together. Vector search and the ticket share a commit. If the agent process dies, Cockroach still has the night.",
   },
   {
-    kicker: "Control plane",
-    title: "ccloud cluster list --output json",
-    body: "Before the agent trusts memory, it asks CockroachDB Cloud if the memory layer itself is healthy.",
-  },
-  {
-    kicker: "The point",
-    title: "The next spawn does not start from zero.",
-    body: "Episodic and semantic rows are committed. Relic is production memory for on-call agent fleets.",
+    kicker: "Why it matters",
+    title: "The next agent inherits the fix.",
+    body: "Relic writes the lesson back. Tonight, or in another region, nobody repeats the same rollback. That is production memory for agents that act.",
   },
 ];
 
-function run(cmd, args, opts = {}) {
+function run(cmd, args) {
   return new Promise((resolve, reject) => {
-    const child = spawn(cmd, args, { stdio: "inherit", ...opts });
+    const child = spawn(cmd, args, { stdio: "inherit" });
     child.on("exit", (code) => {
       if (code === 0) resolve();
       else reject(new Error(`${cmd} exited ${code}`));
@@ -88,58 +94,53 @@ function run(cmd, args, opts = {}) {
   });
 }
 
-async function ttsEleven(text, out) {
-  const key = process.env.ELEVENLABS_API_KEY;
-  if (!key) return false;
-  const res = await fetch(
-    "https://api.elevenlabs.io/v1/text-to-speech/JBFqnCBsd6RMkjVDRZzb",
-    {
-      method: "POST",
-      headers: {
-        "xi-api-key": key,
-        accept: "audio/mpeg",
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        text,
-        model_id: "eleven_multilingual_v2",
-        voice_settings: { stability: 0.45, similarity_boost: 0.75 },
-      }),
-    },
-  );
-  if (!res.ok) {
-    console.warn("ElevenLabs failed", res.status, await res.text());
-    return false;
-  }
-  const buf = Buffer.from(await res.arrayBuffer());
-  await writeFile(out, buf);
-  return true;
-}
-
-async function ttsSay(text, outWav) {
-  const aiff = outWav.replace(/\.wav$/, ".aiff");
-  await execFileAsync("say", ["-v", "Daniel", "-o", aiff, text]);
-  await run("ffmpeg", ["-y", "-i", aiff, "-ar", "44100", "-ac", "1", outWav]);
-}
-
 function chromeBin() {
   const chrome = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
-  const chrome2 = "/Applications/Chromium.app/Contents/MacOS/Chromium";
   if (existsSync(chrome)) return chrome;
-  if (existsSync(chrome2)) return chrome2;
-  throw new Error("Chrome not found for slide screenshots");
+  throw new Error("Chrome not found");
 }
 
-async function chromeShot(target, pngFile) {
+async function chromeShot(target, pngFile, size = "1920,1080") {
   await run(chromeBin(), [
     "--headless=new",
     "--disable-gpu",
     `--screenshot=${pngFile}`,
-    "--window-size=1920,1080",
+    `--window-size=${size}`,
     "--hide-scrollbars",
     "--default-background-color=0c0d0b",
     target,
   ]);
+}
+
+async function ttsEleven(text, out) {
+  const key = process.env.ELEVENLABS_API_KEY;
+  if (!key) return false;
+  // Will — conversational US, less announcer than George
+  const voice = process.env.ELEVENLABS_VOICE_ID || "bIHbv24MWmeRgasZH58o";
+  const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voice}`, {
+    method: "POST",
+    headers: {
+      "xi-api-key": key,
+      accept: "audio/mpeg",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      text,
+      model_id: "eleven_multilingual_v2",
+      voice_settings: {
+        stability: 0.38,
+        similarity_boost: 0.78,
+        style: 0.22,
+        use_speaker_boost: true,
+      },
+    }),
+  });
+  if (!res.ok) {
+    console.warn("ElevenLabs failed", res.status, await res.text());
+    return false;
+  }
+  await writeFile(out, Buffer.from(await res.arrayBuffer()));
+  return true;
 }
 
 async function main() {
@@ -149,19 +150,35 @@ async function main() {
   await mkdir(path.join(root, "audio"), { recursive: true });
   await mkdir(path.join(root, "out"), { recursive: true });
 
+  const thumbHtml = path.join(root, "thumbnail.html");
+  const thumbPng = path.join(root, "out", "relic-thumbnail.png");
+  const thumbJpg = path.join(root, "out", "relic-thumbnail.jpg");
+  await chromeShot(`file://${thumbHtml}`, thumbPng, "1800,1200");
+  await run("ffmpeg", [
+    "-y",
+    "-i",
+    thumbPng,
+    "-vf",
+    "scale=1800:1200",
+    "-q:v",
+    "3",
+    thumbJpg,
+  ]);
+
   for (let i = 0; i < slides.length; i += 1) {
     const s = slides[i];
     const htmlPath = path.join(root, "slides", `${String(i).padStart(2, "0")}.html`);
-    await writeFile(htmlPath, slideHtml(s.title, s.body, s.kicker));
-    const png = path.join(root, "frames", `${String(i).padStart(2, "0")}.png`);
-    await chromeShot(`file://${htmlPath}`, png);
+    await writeFile(htmlPath, slideHtml(s.kicker, s.title, s.body, s.extra || ""));
+    await chromeShot(
+      `file://${htmlPath}`,
+      path.join(root, "frames", `${String(i).padStart(2, "0")}.png`),
+    );
   }
 
   const live = [
     ["http://127.0.0.1:3000/", "live-home.png"],
     ["http://127.0.0.1:3000/console", "live-console.png"],
     ["http://127.0.0.1:3000/memory", "live-memory.png"],
-    ["http://127.0.0.1:3000/architecture", "live-arch.png"],
   ];
   for (const [url, name] of live) {
     try {
@@ -171,12 +188,13 @@ async function main() {
     }
   }
 
-  const full = NARRATION.join(" ");
   const mp3 = path.join(root, "audio", "vo.mp3");
-  const wav = path.join(root, "audio", "vo.wav");
-  const voiced = await ttsEleven(full, mp3);
+  const voiced = await ttsEleven(NARRATION, mp3);
   if (!voiced) {
-    await ttsSay(full, wav);
+    const wav = path.join(root, "audio", "vo.wav");
+    const aiff = path.join(root, "audio", "vo.aiff");
+    await execFileAsync("say", ["-v", "Samantha", "-r", "172", "-o", aiff, NARRATION]);
+    await run("ffmpeg", ["-y", "-i", aiff, "-ar", "44100", "-ac", "1", wav]);
   }
 
   const frameNames = [
@@ -189,18 +207,17 @@ async function main() {
     "live-memory.png",
     "04.png",
     "05.png",
-    "live-arch.png",
-    "06.png",
   ];
   const existing = frameNames.filter((n) => existsSync(path.join(root, "frames", n)));
+  const duration = voiced ? 10 : 9;
   const list = existing
-    .map((n) => `file '${path.join(root, "frames", n)}'\nduration 8`)
+    .map((n) => `file '${path.join(root, "frames", n)}'\nduration ${duration}`)
     .join("\n");
   const last = path.join(root, "frames", existing[existing.length - 1]);
   const concatPath = path.join(root, "frames", "concat.txt");
   await writeFile(concatPath, `${list}\nfile '${last}'\n`);
 
-  const audio = voiced ? mp3 : wav;
+  const audio = voiced ? mp3 : path.join(root, "audio", "vo.wav");
   const out = path.join(root, "out", "relic-demo.mp4");
   await run("ffmpeg", [
     "-y",
@@ -212,18 +229,23 @@ async function main() {
     concatPath,
     "-i",
     audio,
+    "-filter_complex",
+    "[0:v]scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,fps=30[v];[1:a]atempo=0.96[a]",
+    "-map",
+    "[v]",
+    "-map",
+    "[a]",
     "-c:v",
     "libx264",
     "-pix_fmt",
     "yuv420p",
-    "-vf",
-    "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,fps=30",
     "-c:a",
     "aac",
     "-shortest",
     out,
   ]);
   console.log("wrote", out);
+  console.log("thumbnail", thumbJpg);
 }
 
 main().catch((err) => {

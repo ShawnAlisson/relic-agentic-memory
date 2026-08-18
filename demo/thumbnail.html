@@ -1,0 +1,35 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    html, body { margin: 0; width: 1800px; height: 1200px; background: #0c0d0b; color: #ece7d8; }
+    body { font-family: "IBM Plex Sans", Helvetica, sans-serif; overflow: hidden; }
+    .page { width: 1800px; height: 1200px; padding: 72px 80px; box-sizing: border-box; position: relative; }
+    .top { display: flex; justify-content: space-between; font-family: "IBM Plex Mono", monospace; font-size: 22px; letter-spacing: 0.16em; text-transform: uppercase; color: #d6ff4b; }
+    h1 { font-family: "Newsreader", Georgia, serif; font-weight: 500; font-size: 168px; margin: 36px 0 12px; letter-spacing: -0.04em; line-height: 0.9; }
+    .pitch { font-size: 36px; line-height: 1.35; max-width: 18em; color: #c8c2b0; }
+    .row { display: flex; gap: 28px; margin-top: 72px; }
+    .card { flex: 1; border-top: 1px solid #2a2c24; padding-top: 22px; }
+    .card b { display: block; font-size: 28px; margin-bottom: 8px; }
+    .card span { color: #9a947f; font-size: 24px; line-height: 1.35; }
+    .bar { position: absolute; bottom: 0; left: 0; right: 0; height: 16px; background: #d6ff4b; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="top">
+      <span>CockroachDB × AWS</span>
+      <span>Agentic memory</span>
+    </div>
+    <h1>Relic</h1>
+    <p class="pitch">Memory for on-call AI agents. They recall the last outage, fix this one, and write the lesson down.</p>
+    <div class="row">
+      <div class="card"><b>1. Store</b><span>The incident is a row in CockroachDB, not a chat.</span></div>
+      <div class="card"><b>2. Recall</b><span>Vector search finds the last time checkout broke.</span></div>
+      <div class="card"><b>3. Act</b><span>It ships a fix path, then the next agent inherits it.</span></div>
+    </div>
+    <div class="bar"></div>
+  </div>
+</body>
+</html>
