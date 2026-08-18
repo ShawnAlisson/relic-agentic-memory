@@ -1,5 +1,15 @@
 import { Pool } from "pg";
 
+function poolConfig(connectionString: string) {
+  const disable = /sslmode=disable/i.test(connectionString);
+  return {
+    connectionString,
+    max: 12,
+    idleTimeoutMillis: 20_000,
+    ssl: disable ? false : { rejectUnauthorized: true },
+  };
+}
+
 const connectionString =
   process.env.DATABASE_URL ||
   "postgresql://root@127.0.0.1:26257/relic?sslmode=disable";
@@ -9,12 +19,7 @@ declare global {
 }
 
 export const pool =
-  global.relicPool ??
-  new Pool({
-    connectionString,
-    max: 12,
-    idleTimeoutMillis: 20_000,
-  });
+  global.relicPool ?? new Pool(poolConfig(connectionString));
 
 if (process.env.NODE_ENV !== "production") {
   global.relicPool = pool;

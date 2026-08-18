@@ -8,10 +8,10 @@
     "build": "next build",
     "start": "next start --port 3000",
     "lint": "next lint",
-    "db:migrate": "node scripts/migrate.mjs",
-    "db:seed": "node scripts/seed.mjs",
-    "demo": "node scripts/run-demo-incident.mjs",
-    "video": "node scripts/build-demo-video.mjs"
+    "db:migrate": "node --env-file=.env scripts/migrate.mjs",
+    "db:seed": "node --env-file=.env scripts/seed.mjs",
+    "demo": "node --env-file=.env scripts/run-demo-incident.mjs",
+    "video": "node --env-file=.env scripts/build-demo-video.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.699.0",

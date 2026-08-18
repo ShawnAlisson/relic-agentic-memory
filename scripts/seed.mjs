@@ -1,5 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { Pool } from "pg";
+import { loadEnv, poolConfig } from "./env.mjs";
+
+loadEnv();
 
 function embedLocal(text) {
   const DIM = 384;
@@ -22,11 +25,12 @@ function embedLocal(text) {
 const TENANT = "11111111-1111-1111-1111-111111111111";
 const AGENT = "22222222-2222-2222-2222-222222222222";
 
-const pool = new Pool({
-  connectionString:
+const pool = new Pool(
+  poolConfig(
     process.env.DATABASE_URL ||
-    "postgresql://root@127.0.0.1:26257/relic?sslmode=disable",
-});
+      "postgresql://root@127.0.0.1:26257/relic?sslmode=disable",
+  ),
+);
 
 const memories = [
   {

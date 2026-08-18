@@ -4,6 +4,9 @@ import { spawn, execFile } from "node:child_process";
 import { promisify } from "node:util";
 import path from "node:path";
 
+import { loadEnv } from "./env.mjs";
+loadEnv();
+
 const execFileAsync = promisify(execFile);
 
 const NARRATION = [

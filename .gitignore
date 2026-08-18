@@ -1,11 +1,31 @@
-node_modules
-.next
-/out
+# secrets — never commit
 .env
-.env.local
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+id_rsa
+id_ed25519
+credentials.json
+secrets/
+
+# local / build
+node_modules/
+.next/
+/out
 *.log
-demo/frames
-demo/audio
-demo/slides
+*.tsbuildinfo
 .DS_Store
+.vercel
+.turbo
+coverage/
 infra/lambda.zip
+
+# generated demo intermediates (keep demo/out/*.mp4)
+demo/frames/
+demo/audio/
+demo/slides/
+demo/last-episode.json
