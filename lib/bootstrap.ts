@@ -163,7 +163,7 @@ async function bootstrapInner() {
   await pool.query(
     `INSERT INTO tenants (id, name, region) VALUES ($1,$2,$3)
      ON CONFLICT (id) DO NOTHING`,
-    [TENANT, "Decillion Ops", "eu-west-1"],
+    [TENANT, "Harbor Pay", "London"],
   );
   await pool.query(
     `INSERT INTO agents (id, tenant_id, name, role) VALUES ($1,$2,$3,$4)
@@ -185,10 +185,10 @@ async function bootstrapInner() {
       priorId,
       TENANT,
       AGENT,
-      "Checkout p99 3.8s after payment SDK bump",
-      "checkout-api",
+      "Europe could not check out after a payment SDK bump",
+      "checkout",
       "sev1",
-      "eu-west-1",
+      "London",
       "Rolled back SDK, batched payment_intent, restored p99 to 190ms.",
       JSON.stringify({ p99_ms: 3800, root_cause: "serial_payment_roundtrip" }),
     ],

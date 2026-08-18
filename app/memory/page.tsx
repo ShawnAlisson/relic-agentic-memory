@@ -7,11 +7,17 @@ type Match = {
   kind: string;
   title: string;
   content: string;
-  distance?: number;
+};
+
+const KIND_LABEL: Record<string, string> = {
+  episodic: "Past outage",
+  procedural: "Playbook",
+  semantic: "Lesson",
+  working: "Tonight",
 };
 
 export default function MemoryPage() {
-  const [q, setQ] = useState("checkout p99 timeout eu-west-1 canary");
+  const [q, setQ] = useState("Europe checkout is timing out after a canary");
   const [matches, setMatches] = useState<Match[]>([]);
 
   async function search(query: string) {
@@ -29,12 +35,12 @@ export default function MemoryPage() {
     <>
       <Nav />
       <div className="shell" style={{ paddingTop: 36, paddingBottom: 80 }}>
-        <div className="kicker">Distributed vector indexing</div>
-        <h1 style={{ fontSize: 48 }}>Same database. Vectors included.</h1>
+        <div className="kicker">Have we seen this before?</div>
+        <h1 style={{ fontSize: 48 }}>Ask Relic like you would ask last night’s on-call.</h1>
         <p className="lede">
-          Relic stores operational rows and embeddings together. Retrieval uses
-          CockroachDB <code>&lt;-&gt;</code> on a tenant-prefixed VECTOR index — no
-          extra store, no reindex job, no consistency gap.
+          This is not a second database. The same CockroachDB that holds the ticket
+          also finds the nearest past outage — so an agent (or a human) can reuse a
+          fix instead of rediscovering it.
         </p>
         <form
           onSubmit={(e) => {
@@ -55,15 +61,12 @@ export default function MemoryPage() {
             }}
           />
           <button className="btn" type="submit">
-            Search memory
+            Ask memory
           </button>
         </form>
         {matches.map((m, i) => (
           <div className="mem" key={`${m.title}-${i}`}>
-            <div className="kind">
-              {m.kind}
-              {typeof m.distance === "number" ? ` · L2 ${Number(m.distance).toFixed(4)}` : ""}
-            </div>
+            <div className="kind">{KIND_LABEL[m.kind] || m.kind}</div>
             <h4>{m.title}</h4>
             <p>{m.content}</p>
           </div>

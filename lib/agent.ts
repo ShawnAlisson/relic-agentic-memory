@@ -77,27 +77,18 @@ async function ccloudStatus(): Promise<string> {
 }
 
 function composeResolution(input: {
-  title: string;
   retrieved: { title: string; content: string; kind: string }[];
 }): { summary: string; actions: string[]; lesson: string } {
-  const procedural = input.retrieved.find((m) => m.kind === "procedural");
-  const episodic = input.retrieved.find((m) => m.kind === "episodic");
   return {
-    summary: `Checkout p99 regression matched prior memory. ${
-      episodic
-        ? `Closest episode: ${episodic.title}.`
-        : "No exact prior episode; used procedural runbooks."
-    } Relic kept working memory transactional in CockroachDB while the agent retrieved semantic neighbors via distributed vector index.`,
+    summary:
+      "Shoppers in Europe cannot pay — checkout jumped from 210ms to 4.2 seconds after tonight's canary. Relic already had this outage on file from 22 July: an extra round-trip on payment_intent. Same move as last time: freeze the canary, batch authorize+capture. That is 41 minutes the next agent will not waste repeating a rollback it already learned.",
     actions: [
-      "Pin checkout-api canary to last-known-good build 2026.08.12",
-      "Shed 40% EU traffic to us-east-1 via weighted DNS while Cockroach leaseholders stay available",
-      "Re-enable statement timeout 800ms on relic.memories writes after confirming VECTOR index lag = 0",
-      procedural
-        ? `Follow runbook: ${procedural.title}`
-        : "Open a new procedural memory for this failure class",
+      "Freeze canary 2026.08.18-rc.4. Put last-known-good back on eu-west-1.",
+      "Batch the payment_intent call — the July root cause, not a new mystery.",
+      "Do not restart Cockroach. Memory has to stay up while checkout recovers.",
     ],
     lesson:
-      "Agent memory must be the system of record. Session context is not enough: the next agent spawn needs the same episode, embeddings, and artifacts without a maintenance window.",
+      "The next on-call agent must inherit this case. If memory lives only in chat, the 3am spawn will redo the same 41-minute rollback.",
   };
 }
 
@@ -117,22 +108,22 @@ export async function runIncidentAgent(episodeId: string): Promise<{
 
   const prompt = `${episode.title} ${episode.service} ${episode.region} ${JSON.stringify(episode.payload)}`;
 
+  await writeMemory({
+    tenantId: episode.tenant_id,
+    episodeId,
+    kind: "working",
+    title: `Tonight: ${episode.title}`,
+    content: prompt,
+    importance: 0.4,
+  });
+
   await addTrace(
     episodeId,
     1,
-    "Persist working memory for this spawn. If this process dies, CockroachDB still holds the episode.",
+    "Wrote tonight's outage into CockroachDB first. If this agent process dies, the next one still has the case.",
     "memory.write",
-    "kind=working",
-    (
-      await writeMemory({
-        tenantId: episode.tenant_id,
-        episodeId,
-        kind: "working",
-        title: `Working: ${episode.title}`,
-        content: prompt,
-        importance: 0.4,
-      })
-    ).id,
+    "Save the incident",
+    "Case file opened. Status: investigating. This row is the working memory.",
   );
 
   const retrieved = await searchMemories({
@@ -141,29 +132,32 @@ export async function runIncidentAgent(episodeId: string): Promise<{
     limit: 8,
   });
 
+  const hits = retrieved
+    .filter((m) => m.kind !== "working")
+    .slice(0, 3)
+    .map((m) => m.title);
   await addTrace(
     episodeId,
     2,
-    "Retrieve long-term memory with CockroachDB VECTOR index (C-SPANN), prefixed by tenant for isolation.",
+    "Asked Relic: have we seen Europe checkout die like this before?",
     "vector.search",
-    prompt.slice(0, 180),
-    JSON.stringify(
-      retrieved.map((m) => ({
-        kind: m.kind,
-        title: m.title,
-        distance: m.distance,
-      })),
-    ),
+    "Search past outages",
+    hits.length
+      ? `Yes. Closest match: ${hits[0]}. Also on file: ${hits.slice(1).join("; ") || "runbooks"}.`
+      : "No close match. Using runbooks only.",
   );
 
   const cluster = await ccloudStatus();
+  const healthy = /HEALTHY/i.test(cluster);
   await addTrace(
     episodeId,
     3,
-    "Ask the CockroachDB Cloud control plane (ccloud CLI, JSON output) whether memory itself is healthy.",
+    "Checked that the memory database itself is up. An agent cannot recall a lesson if Cockroach is the thing on fire.",
     "ccloud.cluster",
-    "cluster list --output json",
-    cluster,
+    "Is memory healthy?",
+    healthy
+      ? "CockroachDB Cloud is healthy across regions. Safe to trust the recall."
+      : cluster.slice(0, 280),
   );
 
   let artifact: { bucket: string; key: string; bytes: number } | undefined;
@@ -195,32 +189,31 @@ export async function runIncidentAgent(episodeId: string): Promise<{
     await addTrace(
       episodeId,
       4,
-      "Write investigation packet to Amazon S3 (MinIO locally / AWS in production). Memory stays in CockroachDB; bulky artifacts do not.",
+      "Filed the investigation packet. Big logs go to S3; the memory that matters stays in CockroachDB.",
       "s3.put",
-      artifact.key,
-      `${artifact.bucket}/${artifact.key} (${artifact.bytes} bytes)`,
+      "Save the case file",
+      `Stored ${artifact.bucket}/${artifact.key}`,
     );
-  } catch (err) {
+  } catch {
     await addTrace(
       episodeId,
       4,
-      "S3 is optional on the Vercel demo. CockroachDB still committed working and semantic memory.",
+      "Object storage is not configured on this host. The case still lives in CockroachDB — that is the part that must not go down.",
       "s3.put",
-      "skipped",
-      err instanceof Error ? err.message : String(err),
+      "S3 skipped",
+      "Memory committed in Cockroach anyway.",
     );
   }
 
   const local = composeResolution({
-    title: episode.title,
     retrieved,
   });
   const llm = await bedrockReason({
     system:
-      "You are Relic, an on-call agent whose durable memory lives in CockroachDB. Be concise. Cite retrieved memories.",
+      "You are Relic. Speak like a senior on-call engineer to a human. No jargon. Four short sentences. Name the past outage you reused.",
     prompt: `Incident: ${prompt}\nMemories:\n${retrieved
       .map((m) => `- [${m.kind}] ${m.title}: ${m.content}`)
-      .join("\n")}\nWrite a 4-sentence resolution plan.`,
+      .join("\n")}\nWrite the resolution for a human.`,
   });
 
   const summary = llm ?? local.summary;
@@ -242,7 +235,7 @@ export async function runIncidentAgent(episodeId: string): Promise<{
     tenantId: episode.tenant_id,
     episodeId,
     kind: "semantic",
-    title: "Lesson: checkout latency + VECTOR write amplification",
+    title: "Lesson: do not re-investigate a checkout outage you already solved",
     content: local.lesson,
     importance: 0.88,
   });
@@ -250,9 +243,9 @@ export async function runIncidentAgent(episodeId: string): Promise<{
   await addTrace(
     episodeId,
     5,
-    "Commit episodic + semantic memories so the next autonomous spawn does not start from zero.",
+    "Wrote the lesson back. The next agent that wakes up — tonight or in another region — starts with this case, not a blank chat.",
     "memory.commit",
-    "kind=episodic,semantic",
+    "Remember for next time",
     summary,
   );
 
@@ -286,16 +279,16 @@ export async function createLiveIncident(tenantId: string, agentId: string) {
     [
       tenantId,
       agentId,
-      "Checkout p99 4.2s in eu-west-1 after canary 2026.08.18",
-      "checkout-api",
+      "Europe cannot check out — payments taking 4.2 seconds",
+      "checkout",
       "sev1",
-      "eu-west-1",
+      "London",
       JSON.stringify({
-        p99_ms: 4200,
-        baseline_ms: 210,
-        error_rate: 0.018,
-        symptom: "payment_intent_timeout",
-        canary: "2026.08.18-rc.4",
+        shoppers_blocked: true,
+        pay_time_ms: 4200,
+        usual_ms: 210,
+        failed_payments: "1.8%",
+        shipped: "canary 18 Aug",
       }),
     ],
   );
