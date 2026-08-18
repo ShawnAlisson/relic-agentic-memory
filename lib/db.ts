@@ -4,8 +4,9 @@ function poolConfig(connectionString: string) {
   const disable = /sslmode=disable/i.test(connectionString);
   return {
     connectionString,
-    max: 12,
+    max: process.env.VERCEL ? 1 : 12,
     idleTimeoutMillis: 20_000,
+    connectionTimeoutMillis: 15_000,
     ssl: disable ? false : { rejectUnauthorized: true },
   };
 }
@@ -21,9 +22,7 @@ declare global {
 export const pool =
   global.relicPool ?? new Pool(poolConfig(connectionString));
 
-if (process.env.NODE_ENV !== "production") {
-  global.relicPool = pool;
-}
+global.relicPool = pool;
 
 export async function query<T extends Record<string, unknown>>(
   text: string,

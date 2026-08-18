@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "app/api/demo/run/route.ts": { "maxDuration": 60 },
+    "app/api/memory/route.ts": { "maxDuration": 60 },
+    "app/api/health/route.ts": { "maxDuration": 60 }
+  }
+}

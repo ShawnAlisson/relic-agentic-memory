@@ -166,40 +166,50 @@ export async function runIncidentAgent(episodeId: string): Promise<{
     cluster,
   );
 
-  const artifact = await putArtifact({
-    key: `episodes/${episodeId}/investigation.json`,
-    contentType: "application/json",
-    body: JSON.stringify(
-      {
-        episode,
-        retrieved: retrieved.map((m) => ({
-          id: m.id,
-          kind: m.kind,
-          title: m.title,
-          distance: m.distance,
-        })),
-        cluster,
-        stored_at: new Date().toISOString(),
-      },
-      null,
-      2,
-    ),
-  });
-
-  await query(
-    `INSERT INTO artifacts (episode_id, s3_bucket, s3_key, content_type, bytes)
-     VALUES ($1,$2,$3,$4,$5)`,
-    [episodeId, artifact.bucket, artifact.key, "application/json", artifact.bytes],
-  );
-
-  await addTrace(
-    episodeId,
-    4,
-    "Write investigation packet to Amazon S3 (MinIO locally / AWS in production). Memory stays in CockroachDB; bulky artifacts do not.",
-    "s3.put",
-    artifact.key,
-    `${artifact.bucket}/${artifact.key} (${artifact.bytes} bytes)`,
-  );
+  let artifact: { bucket: string; key: string; bytes: number } | undefined;
+  try {
+    artifact = await putArtifact({
+      key: `episodes/${episodeId}/investigation.json`,
+      contentType: "application/json",
+      body: JSON.stringify(
+        {
+          episode,
+          retrieved: retrieved.map((m) => ({
+            id: m.id,
+            kind: m.kind,
+            title: m.title,
+            distance: m.distance,
+          })),
+          cluster,
+          stored_at: new Date().toISOString(),
+        },
+        null,
+        2,
+      ),
+    });
+    await query(
+      `INSERT INTO artifacts (episode_id, s3_bucket, s3_key, content_type, bytes)
+       VALUES ($1,$2,$3,$4,$5)`,
+      [episodeId, artifact.bucket, artifact.key, "application/json", artifact.bytes],
+    );
+    await addTrace(
+      episodeId,
+      4,
+      "Write investigation packet to Amazon S3 (MinIO locally / AWS in production). Memory stays in CockroachDB; bulky artifacts do not.",
+      "s3.put",
+      artifact.key,
+      `${artifact.bucket}/${artifact.key} (${artifact.bytes} bytes)`,
+    );
+  } catch (err) {
+    await addTrace(
+      episodeId,
+      4,
+      "S3 is optional on the Vercel demo. CockroachDB still committed working and semantic memory.",
+      "s3.put",
+      "skipped",
+      err instanceof Error ? err.message : String(err),
+    );
+  }
 
   const local = composeResolution({
     title: episode.title,
@@ -253,7 +263,7 @@ export async function runIncidentAgent(episodeId: string): Promise<{
       episode.tenant_id,
       "relic-oncall",
       "episode.resolve",
-      JSON.stringify({ episodeId, artifact: artifact.key }),
+      JSON.stringify({ episodeId, artifact: artifact?.key ?? null }),
     ],
   );
 

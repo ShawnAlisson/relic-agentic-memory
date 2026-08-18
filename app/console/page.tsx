@@ -36,7 +36,12 @@ export default function ConsolePage() {
   async function load() {
     const res = await fetch("/api/memory");
     if (!res.ok) {
-      setError("CockroachDB is not reachable yet. Start docker compose and migrate.");
+      const body = await res.json().catch(() => ({}));
+      setError(
+        typeof body.error === "string"
+          ? body.error
+          : "CockroachDB is not reachable. On Vercel, set DATABASE_URL to your Cloud SQL string and redeploy.",
+      );
       return;
     }
     setError(null);
