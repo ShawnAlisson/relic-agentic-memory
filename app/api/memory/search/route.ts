@@ -10,11 +10,3 @@ export async function GET(req: NextRequest) {
   const rows = await searchMemories({ tenantId: TENANT, query: q, limit: 8 });
   return NextResponse.json({ query: q, matches: rows });
 }
-
-const TENANT = "11111111-1111-1111-1111-111111111111";
-
-export async function GET(req: NextRequest) {
-  const q = req.nextUrl.searchParams.get("q") || "checkout latency eu-west-1";
-  const rows = await searchMemories({ tenantId: TENANT, query: q, limit: 8 });
-  return NextResponse.json({ query: q, matches: rows });
-}

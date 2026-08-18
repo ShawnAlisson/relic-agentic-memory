@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
+import { ensureReady } from "@/lib/bootstrap";
 import { searchMemories } from "@/lib/memory";
 import { query } from "@/lib/db";
 
 const TENANT = "11111111-1111-1111-1111-111111111111";
 
 export async function GET() {
+  await ensureReady();
   const memories = await searchMemories({
     tenantId: TENANT,
     query: "read-only cluster health",
